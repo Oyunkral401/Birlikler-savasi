@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rüzgarlı Topçu Savaşları - Tam Sürüm</title>
+
+    <!-- Firebase SDK (Version 9 - Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: #ffffff;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #334155;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        canvas {
+            background: linear-gradient(to bottom, #020617, #1e1b4b);
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        /* HUD Bilgi Paneli */
+        .ui-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .hud-element {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+            font-weight: 700;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            pointer-events: auto;
+        }
+
+        .health-bar-box {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 100px;
+        }
+
+        .health-bar-outer {
+            width: 100%;
+            height: 8px;
+            background: #334155;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .health-bar-inner {
+            height: 100%;
+            width: 100%;
+            transition: width 0.3s ease;
+        }
+
+        #player-hp-bar { background: #3b82f6; }
+        #enemy-hp-bar { background: #ef4444; }
+
+        /* Ses Butonu */
+        #sound-btn {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 10px;
+        }
+
+        /* Mobil Uyumlu Alt Kontrol Paneli */
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(8px);
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 8px;
+            border-radius: 8px;
+            flex: 1;
+            justify-content: space-between;
+        }
+
+        .control-label {
+            font-size: 12px;
+            color: #cbd5e1;
+            font-weight: 700;
+            min-width: 55px;
+            text-align: center;
+        }
+
+        .btn-touch {
+            background: #334155;
+            color: white;
+            border: 1px solid #475569;
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .btn-touch:active {
+            background: #475569;
+        }
+
+        #fire-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 800;
+            font-size: 15px;
+            flex: 1.5;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        }
+
+        #fire-btn:active {
+            background: #1d4ed8;
+            transform: scale(0.98);
+        }
+
+        #fire-btn:disabled {
+            background: #475569;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+        }
+
+        /* Modallar */
+        .modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            padding: 24px;
+            border-radius: 12px;
+            width: 85%;
+            max-width: 320px;
+            text-align: center;
+            border: 1px solid #334155;
+        }
+
+        .hidden { display: none !important; }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 15px 0;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #0f172a;
+            color: #fff;
+            text-align: center;
+            font-size: 14px;
+            outline: none;
+        }
+
+        ol {
+            text-align: left;
+            margin: 15px 0;
+            padding-left: 20px;
+            max-height: 180px;
+            overflow-y: auto;
+            color: #cbd5e1;
+        }
+
+        li {
+            margin-bottom: 6px;
+            font-size: 12px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 4px;
+        }
+
+        .share-link {
+            margin-top: 12px;
+            font-size: 11px;
+            color: #94a3b8;
+            word-break: break-all;
+        }
+
+        .share-link a {
+            color: #60a5fa;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+    <!-- Ekran Üstü HUD -->
+    <div class="ui-panel">
+        <div class="health-bar-box">
+            <span style="font-size: 10px; font-weight: bold; color: #3b82f6;">OYUNCU</span>
+            <div class="health-bar-outer"><div id="player-hp-bar" class="health-bar-inner"></div></div>
+        </div>
+
+        <div class="hud-element" id="sound-btn">🔊</div>
+        <div class="hud-element" id="turn-display" style="color: #60a5fa;">Sıra: Sizde</div>
+        <div class="hud-element" id="wind-display">Rüzgar: 0.0</div>
+
+        <div class="health-bar-box">
+            <span style="font-size: 10px; font-weight: bold; color: #ef4444; text-align: right;">DÜŞMAN</span>
+            <div class="health-bar-outer"><div id="enemy-hp-bar" class="health-bar-inner"></div></div>
+        </div>
+    </div>
+
+    <!-- Mobil/Dokunmatik Kontrol Paneli -->
+    <div id="controls">
+        <div class="control-row">
+            <div class="control-group">
+                <button class="btn-touch" id="angle-down">-</button>
+                <div class="control-label">Açı: <span id="angle-val">45</span>°</div>
+                <button class="btn-touch" id="angle-up">+</button>
+            </div>
+
+            <div class="control-group">
+                <button class="btn-touch" id="power-down">-</button>
+                <div class="control-label">Güç: <span id="power-val">50</span></div>
+                <button class="btn-touch" id="power-up">+</button>
+            </div>
+        </div>
+
+        <div class="action-btns">
+            <button id="fire-btn">ATEŞ ET!</button>
+            <button id="leaderboard-btn" style="background: #10b981; border:none; padding:10px; border-radius:8px; color:white; font-weight:bold;">Skorlar</button>
+        </div>
+    </div>
+
+    <!-- Oyun Bitti Modalı -->
+    <div id="gameover-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="gameover-title" style="color: #ef4444;">Oyun Bitti!</h2>
+            <p id="final-score" style="margin-top: 10px; color: #94a3b8; font-size: 13px;">Toplam Skor: 0</p>
+            <input type="text" id="player-name" placeholder="Adınızı Girin" maxlength="15">
+            <button id="save-score-btn" style="width: 100%; background: #2563eb; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold;">Skoru Kaydet ve Yeniden Başla</button>
+        </div>
+    </div>
+
+    <!-- Liderlik Tablosu Modalı -->
+    <div id="leaderboard-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 style="color: #10b981;">Skor Tablosu</h2>
+            <ol id="leaderboard-list"><li>Yükleniyor...</li></ol>
+            <button id="close-leaderboard-btn" style="width: 100%; background: #475569; color: white; border: none; padding: 8px; border-radius: 6px; font-weight: bold;">Kapat</button>
+            
+            <div class="share-link">
+                Oyunu Paylaş:<br>
+                <a href="#" id="site-url" target="_blank">Netlify Linkiniz Burada Görünecek</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 1. WEB AUDIO API SES MOTORU
+    // ==========================================
+    let audioCtx = null;
+    let isMuted = false;
+
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    const soundBtn = document.getElementById("sound-btn");
+    soundBtn.addEventListener("click", () => {
+        isMuted = !isMuted;
+        soundBtn.textContent = isMuted ? "🔇" : "🔊";
+    });
+
+    function playShootSound() {
+        if (isMuted) return;
+        initAudio();
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.25);
+
+        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.25);
+    }
+
+    function playExplosionSound() {
+        if (isMuted) return;
+        initAudio();
+
+        const bufferSize = audioCtx.sampleRate * 0.4;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+        filter.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.4);
+
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0.7, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        noise.start();
+        noise.stop(audioCtx.currentTime + 0.4);
+    }
+
+    // ==========================================
+    // 2. FIREBASE VE OYUN MANTIĞI
+    // ==========================================
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    let db = null;
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+    } catch (e) {
+        console.warn("Firebase yapılandırılmadı.");
+    }
+
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let level = 1;
+    let score = 0;
+    let wind = 0;
+    let terrainPoints = [];
+    let currentTurn = 'player';
+    let isGameOver = false;
+
+    // Açı 0° ile 180° arasında ayarlanabilir (0-90 sağa bakış, 90-180 sola bakış)
+    let currentAngle = 45;
+    let currentPower = 50;
+
+    let player = { x: 60, y: 0, hp: 100, maxHp: 100 };
+    let enemy = { x: 720, y: 0, hp: 100, maxHp: 100 };
+
+    let bullet = null;
+    let explosions = [];
+
+    const angleVal = document.getElementById("angle-val");
+    const powerVal = document.getElementById("power-val");
+    const fireBtn = document.getElementById("fire-btn");
+
+    function setupTouchButton(id, action) {
+        const btn = document.getElementById(id);
+        let interval = null;
+
+        const start = (e) => {
+            e.preventDefault();
+            initAudio();
+            action();
+            interval = setInterval(action, 80);
+        };
+
+        const stop = (e) => {
+            e.preventDefault();
+            clearInterval(interval);
+        };
+
+        btn.addEventListener("touchstart", start);
+        btn.addEventListener("touchend", stop);
+        btn.addEventListener("mousedown", start);
+        btn.addEventListener("mouseup", stop);
+        btn.addEventListener("mouseleave", stop);
+    }
+
+    // Açı sınırını 0° - 180° olacak şekilde güncelledik
+    setupTouchButton("angle-up", () => {
+        if (currentAngle < 180) { currentAngle++; angleVal.textContent = currentAngle; }
+    });
+    setupTouchButton("angle-down", () => {
+        if (currentAngle > 0) { currentAngle--; angleVal.textContent = currentAngle; }
+    });
+    setupTouchButton("power-up", () => {
+        if (currentPower < 100) { currentPower++; powerVal.textContent = currentPower; }
+    });
+    setupTouchButton("power-down", () => {
+        if (currentPower > 10) { currentPower--; powerVal.textContent = currentPower; }
+    });
+
+    function generateTerrain() {
+        terrainPoints = [];
+        const step = 10;
+        const seed = Math.random() * 100;
+        for (let x = 0; x <= canvas.width; x += step) {
+            let y = canvas.height - 120 + Math.sin((x + seed) * 0.01) * 60 + Math.cos(x * 0.02) * 30;
+            terrainPoints.push({ x: x, y: y });
+        }
+    }
+
+    function getTerrainY(x) {
+        for (let i = 0; i < terrainPoints.length - 1; i++) {
+            if (x >= terrainPoints[i].x && x <= terrainPoints[i + 1].x) {
+                let t = (x - terrainPoints[i].x) / (terrainPoints[i + 1].x - terrainPoints[i].x);
+                return terrainPoints[i].y + t * (terrainPoints[i + 1].y - terrainPoints[i].y);
+            }
+        }
+        return canvas.height;
+    }
+
+    function initLevel() {
+        generateTerrain();
+        player.x = 70;
+        player.y = getTerrainY(player.x) - 10;
+        enemy.x = canvas.width - 70;
+        enemy.y = getTerrainY(enemy.x) - 10;
+        enemy.hp = 100 + (level - 1) * 20;
+        enemy.maxHp = enemy.hp;
+
+        wind = (Math.random() * 10 - 5).toFixed(1);
+        currentTurn = 'player';
+        updateUI();
+    }
+
+    function updateUI() {
+        let wDir = wind > 0 ? "➔ " : "⬅ ";
+        if (parseFloat(wind) === 0) wDir = "";
+        document.getElementById("wind-display").textContent = `Rüzgar: ${wDir}${Math.abs(wind)}`;
+
+        document.getElementById("player-hp-bar").style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
+        document.getElementById("enemy-hp-bar").style.width = `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`;
+
+        const turnText = document.getElementById("turn-display");
+        if (currentTurn === 'player') {
+            turnText.textContent = "Sıra: Sizde";
+            turnText.style.color = "#60a5fa";
+            fireBtn.disabled = false;
+        } else {
+            turnText.textContent = "Sıra: Düşmanda";
+            turnText.style.color = "#f87171";
+            fireBtn.disabled = true;
+        }
+    }
+
+    fireBtn.addEventListener("click", () => {
+        if (bullet || currentTurn !== 'player' || isGameOver) return;
+        playerShoot();
+    });
+
+    function playerShoot() {
+        playShootSound();
+        const angleRad = (currentAngle * Math.PI) / 180;
+        const power = currentPower * 0.18;
+
+        bullet = {
+            x: player.x,
+            y: player.y - 12,
+            vx: Math.cos(angleRad) * power,
+            vy: -Math.sin(angleRad) * power,
+            owner: 'player'
+        };
+    }
+
+    function enemyShoot() {
+        if (isGameOver) return;
+        playShootSound();
+
+        const dx = player.x - enemy.x;
+        const accuracyFactor = Math.max(0.1, 1 - (level * 0.15));
+        const randomError = (Math.random() - 0.5) * 40 * accuracyFactor;
+
+        let estimatedPower = Math.sqrt(Math.abs(dx)) * 0.55 + randomError * 0.1;
+        let estimatedAngle = 135 + (Math.random() - 0.5) * 10; // Sola doğru açı
+        estimatedPower -= wind * 0.8;
+
+        const angleRad = (estimatedAngle * Math.PI) / 180;
+        const power = Math.min(Math.max(estimatedPower, 5), 18);
+
+        bullet = {
+            x: enemy.x,
+            y: enemy.y - 12,
+            vx: Math.cos(angleRad) * power,
+            vy: -Math.sin(angleRad) * power,
+            owner: 'enemy'
+        };
+    }
+
+    function createExplosion(x, y) {
+        playExplosionSound();
+        explosions.push({ x: x, y: y, radius: 2, alpha: 1 });
+    }
+
+    function update() {
+        if (bullet) {
+            bullet.vx += wind * 0.0035;
+            bullet.vy += 0.15;
+            bullet.x += bullet.vx;
+            bullet.y += bullet.vy;
+
+            let terrY = getTerrainY(bullet.x);
+
+            if (bullet.y >= terrY) {
+                createExplosion(bullet.x, terrY);
+                endTurn();
+            } else if (bullet.owner === 'enemy' && Math.hypot(bullet.x - player.x, bullet.y - player.y) < 20) {
+                createExplosion(player.x, player.y);
+                player.hp -= 25;
+                endTurn();
+            } else if (bullet.owner === 'player' && Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y) < 20) {
+                createExplosion(enemy.x, enemy.y);
+                enemy.hp -= 35;
+                score += 150;
+                endTurn();
+            } else if (bullet.x < 0 || bullet.x > canvas.width || bullet.y > canvas.height) {
+                endTurn();
+            }
+        }
+
+        for (let i = explosions.length - 1; i >= 0; i--) {
+            let exp = explosions[i];
+            exp.radius += 1.5;
+            exp.alpha -= 0.04;
+            if (exp.alpha <= 0) explosions.splice(i, 1);
+        }
+
+        if (!isGameOver) {
+            if (enemy.hp <= 0) {
+                score += 500;
+                level++;
+                initLevel();
+            } else if (player.hp <= 0) {
+                handleGameOver();
+            }
+        }
+    }
+
+    function endTurn() {
+        bullet = null;
+        if (isGameOver) return;
+        currentTurn = (currentTurn === 'player') ? 'enemy' : 'player';
+        updateUI();
+        if (currentTurn === 'enemy') {
+            setTimeout(enemyShoot, 1200);
+        }
+    }
+
+    function handleGameOver() {
+        isGameOver = true;
+        document.getElementById("final-score").textContent = `Toplam Skor: ${score} (Bölüm: ${level})`;
+        document.getElementById("gameover-modal").classList.remove("hidden");
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Arazi Çizimi
+        ctx.fillStyle = "#10b981";
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height);
+        for (let pt of terrainPoints) ctx.lineTo(pt.x, pt.y);
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.fill();
+
+        // Tanklar
+        drawTank(player.x, player.y, "#3b82f6", currentAngle);
+        drawTank(enemy.x, enemy.y, "#ef4444", 135);
+
+        // Nişan Kılavuz Çizgisi
+        if (currentTurn === 'player' && !bullet) {
+            const angleRad = (currentAngle * Math.PI) / 180;
+            const pLength = currentPower * 0.6;
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y - 10);
+            ctx.lineTo(player.x + Math.cos(angleRad) * pLength, player.y - 10 - Math.sin(angleRad) * pLength);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // Mermi Çizimi
+        if (bullet) {
+            ctx.fillStyle = "#f59e0b";
+            ctx.beginPath();
+            ctx.arc(bullet.x, bullet.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Patlama Çizimleri
+        for (let exp of explosions) {
+            ctx.fillStyle = `rgba(239, 68, 68, ${exp.alpha})`;
+            ctx.beginPath();
+            ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    function drawTank(x, y, color, angleDeg) {
+        // Tank Gövdesi
+        ctx.fillStyle = color;
+        ctx.fillRect(x - 14, y - 8, 28, 12);
+
+        // Tank Namlusu (Yön Açı Değerine Göre Çizilir)
+        const angleRad = (angleDeg * Math.PI) / 180;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(x, y - 6);
+        ctx.lineTo(x + Math.cos(angleRad) * 18, y - 6 - Math.sin(angleRad) * 18);
+        ctx.stroke();
+    }
+
+    function gameLoop() {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    document.getElementById("save-score-btn").addEventListener("click", () => {
+        const pName = document.getElementById("player-name").value.trim() || "Anonim";
+        if (db) {
+            db.collection("leaderboard").add({
+                name: pName,
+                score: score,
+                level: level,
+                date: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(resetGame).catch(resetGame);
+        } else {
+            resetGame();
+        }
+    });
+
+    function resetGame() {
+        score = 0;
+        level = 1;
+        player.hp = 100;
+        isGameOver = false;
+        document.getElementById("gameover-modal").classList.add("hidden");
+        initLevel();
+    }
+
+    document.getElementById("leaderboard-btn").addEventListener("click", openLeaderboardView);
+    document.getElementById("close-leaderboard-btn").addEventListener("click", () => {
+        document.getElementById("leaderboard-modal").classList.add("hidden");
+    });
+
+    function openLeaderboardView() {
+        const modal = document.getElementById("leaderboard-modal");
+        const listEl = document.getElementById("leaderboard-list");
+        const siteUrlEl = document.getElementById("site-url");
+
+        siteUrlEl.href = window.location.href;
+        siteUrlEl.textContent = window.location.href;
+
+        modal.classList.remove("hidden");
+        listEl.innerHTML = "Yükleniyor...";
+
+        if (!db) {
+            listEl.innerHTML = "<li>Firebase bağlı değil.</li>";
+            return;
+        }
+
+      // Sola yürüme
+        setupTouchButton("btn-left", () => {
+            if (!isGameOver && playerTank) {
+                playerTank.x = Math.max(20, playerTank.x - 3); // Sol sınır kontrolü
+            }
+        });
+
+        // Sağa yürüme
+        setupTouchButton("btn-right", () => {
+            if (!isGameOver && playerTank) {
+                playerTank.x = Math.min(canvas.width - 20, playerTank.x + 3); // Sağ sınır kontrolü
+            }
+        });
+// Sola yürüme
+    setupTouchButton("btn-left", () => {
+        if (!isGameOver && player) {
+            player.x = Math.max(20, player.x - 3);
+        }
+    });
+
+    // Sağa yürüme
+    setupTouchButton("btn-right", () => {
+        if (!isGameOver && player) {
+            player.x = Math.min(canvas.width - 20, player.x + 3);
+        }
+    });
+
+    document.getElementById("leaderboard-btn").addEventListener("click", openLeaderboardView);
+    document.getElementById("close-leaderboard-btn").addEventListener("click", () => {
+        document.getElementById("leaderboard-modal").classList.add("hidden");
+    });
+
+    function openLeaderboardView() {
+        const modal = document.getElementById("leaderboard-modal");
+        const listEl = document.getElementById("leaderboard-list");
+        const siteUrlEl = document.getElementById("site-url");
+
+        siteUrlEl.href = window.location.href;
+        siteUrlEl.textContent = window.location.href;
+
+        modal.classList.remove("hidden");
+        listEl.innerHTML = "Yükleniyor...";
+
+        if (!db) {
+            listEl.innerHTML = "<li>Firebase bağlı değil.</li>";
+            return;
+        }
+
+        db.collection("leaderboard")
+            .orderBy("level", "desc")
+            .orderBy("score", "desc")
+            .limit(10)
+            .get()
+            .then((snapshot) => {
+                listEl.innerHTML = "";
+                if (snapshot.empty) {
+                    listEl.innerHTML = "<li>Henüz kayıt yok.</li>";
+                    return;
+                }
+                snapshot.forEach((doc) => {
+                    let d = doc.data();
+                    let li = document.createElement("li");
+                    li.textContent = `${d.name} - B${d.level} | Skor: ${d.score}`;
+                    listEl.appendChild(li);
+                });
+            });
+    }
+
+    initLevel();
+    gameLoop();
+</script>
+</body>
+</html>
