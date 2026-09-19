@@ -203,16 +203,13 @@ let currentLevel = 1;
 let wind = Math.floor(Math.random() * 11) - 5;
 let keys = {};
 
-// Özel Güç Kontrolleri (7 Atışta Bir Otomatik Yenilenir)
 let shotsFired = 0;
 let powersUsed = { airstrike: false, triple: false, shield: false };
 let activeShield = false;
 
-// Geliştirme Seviyeleri
 let airDamageExtra = 0;
 let tripleAngleSpread = 7;
 
-// Bot Hafızası
 let aiLastX = null;
 let aiBasePower = 55;
 
@@ -234,7 +231,6 @@ let explosions = [];
 function initGame() {
     playerTank.y = canvas.height - 72;
     
-    // Boss Mantığı (Her 10 Bölümde Bir)
     if (currentLevel % 10 === 0) {
         enemyTank.isBoss = true;
         enemyTank.width = 75;
@@ -257,6 +253,8 @@ function initGame() {
 
     enemyTank.x = canvas.width - 130;
     enemyTank.y = canvas.height - (enemyTank.isBoss ? 88 : 72);
+    projectiles = [];
+    explosions = [];
     updateHUD();
 }
 
@@ -300,6 +298,7 @@ function startGame() {
     document.getElementById('shop-screen').style.display = 'none';
     gameState = 'PLAYING';
     currentTurn = 'PLAYER';
+    document.getElementById('turn-indicator').innerText = "Sıra Sizde!";
     wind = Math.floor(Math.random() * 11) - 5;
     initGame();
     gameLoop();
@@ -315,7 +314,6 @@ function checkPowerReset() {
     updateHUD();
 }
 
-// ÖZEL GÜÇLER
 function useAirstrike() {
     if (gameState !== 'PLAYING' || currentTurn !== 'PLAYER' || powersUsed.airstrike || projectiles.length > 0) return;
     powersUsed.airstrike = true;
@@ -351,7 +349,6 @@ function useShield() {
     document.getElementById('turn-indicator').innerText = "Kalkan Aktif!";
 }
 
-// KLAVYE KONTROLLERİ
 window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; if(e.code === 'Space') fireCannon(); });
 window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
@@ -377,10 +374,12 @@ function fireCannon() {
 }
 
 function enemyTurn() {
-    if (gameState !== 'PLAYING' || !enemyTank) return;
+    if (gameState !== 'PLAYING') return;
+    currentTurn = 'ENEMY';
     document.getElementById('turn-indicator').innerText = "Rakip Nişan Alıyor...";
     
     setTimeout(() => {
+        if (gameState !== 'PLAYING') return;
         const distance = enemyTank.x - playerTank.x;
         if (aiLastX !== null) {
             if (aiLastX > playerTank.x) aiBasePower += 1.5;
@@ -399,7 +398,7 @@ function enemyTurn() {
             x: enemyTank.x + enemyTank.width / 2, y: enemyTank.y,
             vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, owner: 'ENEMY'
         });
-    }, 1200);
+    }, 1000);
 }
 
 function claimBossReward(type) {
@@ -408,6 +407,16 @@ function claimBossReward(type) {
     
     document.getElementById('boss-reward-screen').style.display = 'none';
     document.getElementById('shop-screen').style.display = 'flex';
+}
+
+function switchTurn(lastOwner) {
+    projectiles = [];
+    if (lastOwner === 'PLAYER') {
+        enemyTurn();
+    } else {
+        currentTurn = 'PLAYER';
+        document.getElementById('turn-indicator').innerText = "Sıra Sizde!";
+    }
 }
 
 function update() {
@@ -432,26 +441,22 @@ function update() {
             let dmg = playerTank.damage + (p.isAir ? airDamageExtra : 0);
             enemyTank.hp -= dmg;
             addExplosion(p.x, p.y);
-            projectiles.splice(i, 1);
             updateHUD();
             
             if (enemyTank.hp <= 0) {
-                playerGold += 15; // KİŞİ BAŞINA 15 ALTIN
-                
+                playerGold += 15;
                 if (enemyTank.isBoss) {
                     document.getElementById('boss-reward-screen').style.display = 'flex';
                 } else {
                     alert("Zafer! Rakip yok edildi. +15 Altın!");
                     document.getElementById('shop-screen').style.display = 'flex';
                 }
-                
                 currentLevel++;
                 gameState = 'SHOP';
-            } else if (projectiles.length === 0) {
-                currentTurn = 'ENEMY';
-                enemyTurn();
+            } else {
+                switchTurn('PLAYER');
             }
-            continue;
+            return;
         }
 
         // Oyuncuya Vuruş
@@ -467,7 +472,6 @@ function update() {
             }
             
             addExplosion(p.x, p.y);
-            projectiles.splice(i, 1);
             updateHUD();
             
             if (playerTank.hp <= 0) {
@@ -477,28 +481,17 @@ function update() {
                 gameState = 'SHOP';
                 document.getElementById('shop-screen').style.display = 'flex';
             } else {
-                currentTurn = 'PLAYER';
-                document.getElementById('turn-indicator').innerText = "Sıra Sizde!";
+                switchTurn('ENEMY');
             }
-            continue;
+            return;
         }
 
-        // Zemine Çarpma
-        if (p.y >= canvas.height - 50 || p.x < 0 || p.x > canvas.width) {
-            addExplosion(p.x, canvas.height - 50);
+        // Zemine Çarpma / Ekrandan Çıkma
+        if (p.y >= canvas.height - 50 || p.x < -50 || p.x > canvas.width + 50) {
+            addExplosion(p.x, Math.min(p.y, canvas.height - 50));
             if (p.owner === 'ENEMY') aiLastX = p.x;
-            
-            projectiles.splice(i, 1);
-            
-            if (projectiles.length === 0) {
-                if (p.owner === 'PLAYER') {
-                    currentTurn = 'ENEMY';
-                    enemyTurn();
-                } else {
-                    currentTurn = 'PLAYER';
-                    document.getElementById('turn-indicator').innerText = "Sıra Sizde!";
-                }
-            }
+            switchTurn(p.owner);
+            return;
         }
     }
 
@@ -563,9 +556,11 @@ function draw() {
 }
 
 function gameLoop() {
-    update();
-    draw();
-    if (gameState === 'PLAYING') requestAnimationFrame(gameLoop);
+    if (gameState === 'PLAYING') {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
 }
 
 function setupTouchButton(buttonId, actionCallback) {
