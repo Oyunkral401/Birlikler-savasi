@@ -10,509 +10,6 @@
         #game-container { position: relative; width: 100vw; height: 100vh; background: #87CEEB; }
         canvas { display: block; width: 100%; height: 100%; }
 
-        /* Arayüz Pencereleri */
-        .overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.88); display: flex; flex-direction: column;
-            align-items: center; justify-content: center; z-index: 10; padding: 20px;
-        }
-        h1 { font-size: 2.2rem; color: #f1c40f; margin-bottom: 15px; text-shadow: 2px 2px #000; }
-        
-        /* Mağaza Kartları */
-        .shop-items { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; max-width: 850px; }
-        .shop-card {
-            background: #2c3e50; padding: 12px; border-radius: 8px; border: 2px solid #34495e;
-            text-align: center; width: 135px; display: flex; flex-direction: column; justify-content: space-between;
-        }
-        .shop-card.special { border-color: #f1c40f; background: #34495e; }
-        .shop-card h3 { font-size: 0.95rem; color: #ecf0f1; margin-bottom: 5px; }
-        .shop-card p { font-size: 0.8rem; color: #bdc3c7; margin-bottom: 8px; }
-        .btn-buy {
-            background: #27ae60; border: none; color: white; padding: 6px 10px;
-            border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem;
-        }
-        .btn-buy:hover { background: #2ecc71; }
-        
-        .main-btn {
-            background: #e67e22; border: none; color: white; padding: 12px 35px;
-            font-size: 1.2rem; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 10px;
-        }
-        .main-btn:hover { background: #d35400; }
-
-        /* HUD & Kontroller */
-        #hud {
-            position: absolute; top: 10px; left: 15px; right: 15px;
-            display: flex; justify-content: space-between; font-weight: bold;
-            font-size: 1rem; text-shadow: 1px 1px 3px #000; pointer-events: none; z-index: 5;
-        }
-        .hp-bar-outer { width: 120px; height: 14px; background: #555; border-radius: 7px; overflow: hidden; display: inline-block; vertical-align: middle; }
-        .hp-bar-inner { height: 100%; background: #2ecc71; width: 100%; transition: width 0.3s; }
-        #enemy-hp-bar { background: #e74c3c; }
-
-        #touch-controls {
-            position: absolute; bottom: 15px; left: 0; width: 100%;
-            display: flex; justify-content: space-between; padding: 0 20px;
-            pointer-events: none; z-index: 5;
-        }
-        .control-group { display: flex; gap: 10px; pointer-events: auto; }
-        .t-btn {
-            width: 50px; height: 50px; background: rgba(0,0,0,0.65); border: 2px solid #fff;
-            border-radius: 50%; color: white; font-size: 1.1rem; font-weight: bold;
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
-        }
-        .t-btn:active, .t-btn.active { background: rgba(241, 196, 15, 0.85); color: #000; }
-        #btn-fire { background: rgba(231, 76, 60, 0.85); width: 60px; height: 60px; }
-        
-        /* Özel Güç Buton Paneli */
-        #special-powers {
-            position: absolute; bottom: 75px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 10px; pointer-events: auto; z-index: 5;
-        }
-        .p-btn {
-            background: rgba(44, 62, 80, 0.9); border: 2px solid #f1c40f; color: #fff;
-            padding: 6px 12px; border-radius: 15px; font-size: 0.8rem; font-weight: bold; cursor: pointer;
-        }
-        .p-btn span { color: #f1c40f; font-size: 0.9rem; }
-        
-        #turn-indicator {
-            position: absolute; top: 45px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.7); padding: 6px 16px; border-radius: 20px;
-            font-weight: bold; color: #f1c40f; font-size: 0.9rem; z-index: 5;
-        }
-    </style>
-</head>
-<body>
-
-<div id="game-container">
-    <div id="hud">
-        <div>
-            Siz HP: <div class="hp-bar-outer"><div id="player-hp-bar" class="hp-bar-inner"></div></div>
-            | Altın: <span id="gold-val" style="color:#f1c40f;">100</span>
-        </div>
-        <div>Rüzgar: <span id="wind-val">0</span></div>
-        <div>
-            Rakip HP: <div class="hp-bar-outer"><div id="enemy-hp-bar" class="hp-bar-inner"></div></div>
-        </div>
-    </div>
-
-    <div id="turn-indicator">Sıra Sizde!</div>
-
-    <!-- MAĞAZA EKRANI -->
-    <div id="shop-screen" class="overlay">
-        <h1>TOPÇU MAĞAZASI & MÜHİMMAT</h1>
-        <div class="shop-items">
-            <div class="shop-card">
-                <h3>Güçlü Mermi</h3>
-                <p>+15 Hasar</p>
-                <button class="btn-buy" onclick="buyItem('damage', 40)">40 Altın</button>
-            </div>
-            <div class="shop-card">
-                <h3>Zırh Takviyesi</h3>
-                <p>+30 Can</p>
-                <button class="btn-buy" onclick="buyItem('health', 35)">35 Altın</button>
-            </div>
-            <div class="shop-card special">
-                <h3>🚀 AirStrike</h3>
-                <p>Havadan Füze Yağmuru</p>
-                <button class="btn-buy" onclick="buyItem('airstrike', 60)">60 Altın</button>
-            </div>
-            <div class="shop-card special">
-                <h3>💥 Üçlü Atış</h3>
-                <p>3 Mermi Fırlatır</p>
-                <button class="btn-buy" onclick="buyItem('triple', 50)">50 Altın</button>
-            </div>
-            <div class="shop-card special">
-                <h3>🛡️ Kalkan</h3>
-                <p>1 Saldırı Engeller</p>
-                <button class="btn-buy" onclick="buyItem('shield', 45)">45 Altın</button>
-            </div>
-        </div>
-        <button class="main-btn" onclick="startGame()">SAVAŞI BAŞLAT</button>
-    </div>
-
-    <canvas id="gameCanvas"></canvas>
-
-    <!-- OYUN İÇİ ÖZEL GÜÇ PANELİ -->
-    <div id="special-powers">
-        <button class="p-btn" onclick="useAirstrike()">🚀 Hava Saldırısı (<span id="cnt-airstrike">0</span>)</button>
-        <button class="p-btn" onclick="useTripleShot()">💥 Üçlü Atış (<span id="cnt-triple">0</span>)</button>
-        <button class="p-btn" onclick="useShield()">🛡️ Kalkan (<span id="cnt-shield">0</span>)</button>
-    </div>
-
-    <!-- KONTROLLER -->
-    <div id="touch-controls">
-        <div class="control-group">
-            <div class="t-btn" id="btn-left">◄</div>
-            <div class="t-btn" id="btn-right">►</div>
-        </div>
-        <div class="control-group">
-            <div class="t-btn" id="btn-angle-up">▲</div>
-            <div class="t-btn" id="btn-angle-down">▼</div>
-        </div>
-        <div class="control-group">
-            <div class="t-btn" id="btn-fire">ATEŞ</div>
-        </div>
-    </div>
-</div>
-
-<script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
-
-let gameState = 'SHOP';
-let currentTurn = 'PLAYER';
-let playerGold = 120;
-let wind = Math.floor(Math.random() * 11) - 5;
-let keys = {};
-
-// Özel Güç Envanteri
-let inventory = { airstrike: 1, triple: 1, shield: 0 };
-let activeShield = false;
-
-const playerTank = {
-    x: 100, y: 0, width: 46, height: 22,
-    color: '#2ecc71', hp: 100, maxHp: 100,
-    angle: 45, power: 55, damage: 25, speed: 3
-};
-
-const enemyTank = {
-    x: 0, y: 0, width: 46, height: 22,
-    color: '#e74c3c', hp: 100, maxHp: 100,
-    angle: 135, power: 50, damage: 20
-};
-
-let projectiles = [];
-let explosions = [];
-
-function initGame() {
-    playerTank.y = canvas.height - 72;
-    enemyTank.x = canvas.width - 120;
-    enemyTank.y = canvas.height - 72;
-    updateHUD();
-}
-
-function updateHUD() {
-    document.getElementById('gold-val').innerText = playerGold;
-    document.getElementById('wind-val').innerText = wind > 0 ? `→ ${wind}` : `← ${Math.abs(wind)}`;
-    document.getElementById('player-hp-bar').style.width = Math.max(0, (playerTank.hp / playerTank.maxHp) * 100) + '%';
-    document.getElementById('enemy-hp-bar').style.width = Math.max(0, (enemyTank.hp / enemyTank.maxHp) * 100) + '%';
-    
-    document.getElementById('cnt-airstrike').innerText = inventory.airstrike;
-    document.getElementById('cnt-triple').innerText = inventory.triple;
-    document.getElementById('cnt-shield').innerText = inventory.shield;
-}
-
-function buyItem(type, cost) {
-    if (playerGold >= cost) {
-        playerGold -= cost;
-        if (type === 'damage') playerTank.damage += 15;
-        if (type === 'health') { playerTank.maxHp += 30; playerTank.hp += 30; }
-        if (type === 'airstrike') inventory.airstrike++;
-        if (type === 'triple') inventory.triple++;
-        if (type === 'shield') inventory.shield++;
-        updateHUD();
-    }
-}
-
-function startGame() {
-    document.getElementById('shop-screen').style.display = 'none';
-    gameState = 'PLAYING';
-    currentTurn = 'PLAYER';
-    initGame();
-    gameLoop();
-}
-
-// ÖZEL GÜÇ KULLANIMLARI
-function useAirstrike() {
-    if (gameState !== 'PLAYING' || currentTurn !== 'PLAYER' || inventory.airstrike <= 0 || projectiles.length > 0) return;
-    inventory.airstrike--;
-    updateHUD();
-    
-    // Düşmanın tam tepesinden füze indir
-    projectiles.push({
-        x: enemyTank.x + enemyTank.width / 2,
-        y: -20,
-        vx: 0,
-        vy: 12,
-        owner: 'PLAYER'
-    });
-}
-
-function useTripleShot() {
-    if (gameState !== 'PLAYING' || currentTurn !== 'PLAYER' || inventory.triple <= 0 || projectiles.length > 0) return;
-    inventory.triple--;
-    updateHUD();
-
-    const angles = [playerTank.angle - 8, playerTank.angle, playerTank.angle + 8];
-    angles.forEach(ang => {
-        const rad = (ang * Math.PI) / 180;
-        const speed = playerTank.power * 0.28;
-        projectiles.push({
-            x: playerTank.x + playerTank.width / 2,
-            y: playerTank.y,
-            vx: Math.cos(rad) * speed,
-            vy: -Math.sin(rad) * speed,
-            owner: 'PLAYER'
-        });
-    });
-}
-
-function useShield() {
-    if (gameState !== 'PLAYING' || currentTurn !== 'PLAYER' || inventory.shield <= 0 || activeShield) return;
-    inventory.shield--;
-    activeShield = true;
-    updateHUD();
-    document.getElementById('turn-indicator').innerText = "Kalkan Aktif!";
-}
-
-// KLAVYE KONTROLLERİ
-window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; if(e.code === 'Space') fireCannon(); });
-window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
-
-function handleInput() {
-    if (gameState !== 'PLAYING' || currentTurn !== 'PLAYER') return;
-    if (keys['a'] || keys['arrowleft']) playerTank.x = Math.max(10, playerTank.x - playerTank.speed);
-    if (keys['d'] || keys['arrowright']) playerTank.x = Math.min(canvas.width / 2 - 60, playerTank.x + playerTank.speed);
-    if (keys['w'] || keys['arrowup']) playerTank.angle = Math.min(85, playerTank.angle + 1);
-    if (keys['s'] || keys['arrowdown']) playerTank.angle = Math.max(5, playerTank.angle - 1);
-}
-
-function fireCannon() {
-    if (gameState !== 'PLAYING' || currentTurn !== 'PLAYER' || projectiles.length > 0) return;
-    
-    const rad = (playerTank.angle * Math.PI) / 180;
-    const speed = playerTank.power * 0.28;
-    
-    projectiles.push({
-        x: playerTank.x + playerTank.width / 2,
-        y: playerTank.y,
-        vx: Math.cos(rad) * speed,
-        vy: -Math.sin(rad) * speed,
-        owner: 'PLAYER'
-    });
-}
-
-function enemyTurn() {
-    if (gameState !== 'PLAYING' || !enemyTank) return;
-    document.getElementById('turn-indicator').innerText = "Rakip Nişan Alıyor...";
-    
-    setTimeout(() => {
-        const dist = enemyTank.x - playerTank.x;
-        let aiPower = Math.min(90, Math.max(30, (dist / 12) + (Math.random() * 6 - 3) - (wind * 1.5)));
-        let aiAngle = 135 + (Math.random() * 10 - 5);
-        
-        const rad = (aiAngle * Math.PI) / 180;
-        const speed = aiPower * 0.28;
-
-        projectiles.push({
-            x: enemyTank.x + enemyTank.width / 2,
-            y: enemyTank.y,
-            vx: Math.cos(rad) * speed,
-            vy: -Math.sin(rad) * speed,
-            owner: 'ENEMY'
-        });
-    }, 1200);
-}
-
-function update() {
-    handleInput();
-    
-    for (let i = projectiles.length - 1; i >= 0; i--) {
-        let p = projectiles[i];
-        p.vx += wind * 0.004;
-        p.vy += 0.14;
-        p.x += p.vx;
-        p.y += p.vy;
-
-        const addExplosion = (x, y) => {
-            explosions.push({x, y, radius: 4, maxRadius: 25});
-        };
-
-        // Düşmana Çarpma
-        if (p.owner === 'PLAYER' &&
-            p.x >= enemyTank.x && p.x <= enemyTank.x + enemyTank.width &&
-            p.y >= enemyTank.y && p.y <= enemyTank.y + enemyTank.height) {
-            
-            enemyTank.hp -= playerTank.damage;
-            addExplosion(p.x, p.y);
-            projectiles.splice(i, 1);
-            updateHUD();
-            
-            if (enemyTank.hp <= 0) {
-                alert("Tebrikler! Düşmanı yok ettiniz. +80 Altın!");
-                playerGold += 80;
-                location.reload();
-            } else if (projectiles.length === 0) {
-                currentTurn = 'ENEMY';
-                enemyTurn();
-            }
-            continue;
-        }
-
-        // Oyuncuya Çarpma
-        if (p.owner === 'ENEMY' &&
-            p.x >= playerTank.x && p.x <= playerTank.x + playerTank.width &&
-            p.y >= playerTank.y && p.y <= playerTank.y + playerTank.height) {
-            
-            if (activeShield) {
-                activeShield = false; // Kalkan darbeyi emer
-                alert("Kalkanınız düşman mermisini engelledi!");
-            } else {
-                playerTank.hp -= enemyTank.damage;
-            }
-            
-            addExplosion(p.x, p.y);
-            projectiles.splice(i, 1);
-            updateHUD();
-            
-            if (playerTank.hp <= 0) {
-                alert("Yenildiniz! Tankınız imha edildi.");
-                location.reload();
-            } else {
-                currentTurn = 'PLAYER';
-                document.getElementById('turn-indicator').innerText = "Sıra Sizde!";
-            }
-            continue;
-        }
-
-        // Zemine Vurma
-        if (p.y >= canvas.height - 50 || p.x < 0 || p.x > canvas.width) {
-            addExplosion(p.x, canvas.height - 50);
-            projectiles.splice(i, 1);
-            
-            if (projectiles.length === 0) {
-                if (p.owner === 'PLAYER') {
-                    currentTurn = 'ENEMY';
-                    enemyTurn();
-                } else {
-                    currentTurn = 'PLAYER';
-                    document.getElementById('turn-indicator').innerText = "Sıra Sizde!";
-                }
-            }
-        }
-    }
-
-    for (let i = explosions.length - 1; i >= 0; i--) {
-        let ex = explosions[i];
-        ex.radius += 2;
-        if (ex.radius > ex.maxRadius) explosions.splice(i, 1);
-    }
-}
-
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Gökyüzü ve Zemin
-    ctx.fillStyle = '#87CEEB';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#2d572c';
-    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
-
-    // Bizim Tank
-    ctx.save();
-    ctx.fillStyle = playerTank.color;
-    ctx.fillRect(playerTank.x, playerTank.y, playerTank.width, playerTank.height);
-    ctx.translate(playerTank.x + playerTank.width / 2, playerTank.y + 5);
-    ctx.rotate((-playerTank.angle * Math.PI) / 180);
-    ctx.fillStyle = '#1e8449';
-    ctx.fillRect(0, -4, 28, 8);
-    ctx.restore();
-
-    // Aktif Kalkan Efekti
-    if (activeShield) {
-        ctx.strokeStyle = '#f1c40f';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(playerTank.x + playerTank.width / 2, playerTank.y + playerTank.height / 2, 35, 0, Math.PI * 2);
-        ctx.stroke();
-    }
-
-    // Rakip Tank
-    if (enemyTank.hp > 0) {
-        ctx.save();
-        ctx.fillStyle = enemyTank.color;
-        ctx.fillRect(enemyTank.x, enemyTank.y, enemyTank.width, enemyTank.height);
-        ctx.translate(enemyTank.x + enemyTank.width / 2, enemyTank.y + 5);
-        ctx.rotate((-enemyTank.angle * Math.PI) / 180);
-        ctx.fillStyle = '#922b21';
-        ctx.fillRect(0, -4, 28, 8);
-        ctx.restore();
-    }
-
-    // Mermiler
-    ctx.fillStyle = '#111';
-    projectiles.forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
-        ctx.fill();
-    });
-
-    // Patlamalar
-    explosions.forEach(ex => {
-        ctx.fillStyle = 'rgba(231, 76, 60, 0.7)';
-        ctx.beginPath();
-        ctx.arc(ex.x, ex.y, ex.radius, 0, Math.PI * 2);
-        ctx.fill();
-    });
-}
-
-function gameLoop() {
-    update();
-    draw();
-    if (gameState === 'PLAYING') requestAnimationFrame(gameLoop);
-}
-
-// DOKUNMATİK DÜĞMELER
-function setupTouchButton(buttonId, actionCallback) {
-    const btn = document.getElementById(buttonId);
-    if (!btn) return;
-    let intervalId = null;
-    const startAction = (e) => {
-        if (e.cancelable) e.preventDefault();
-        btn.classList.add('active');
-        actionCallback();
-        if (!intervalId) intervalId = setInterval(actionCallback, 50);
-    };
-    const stopAction = (e) => {
-        if (e && e.cancelable) e.preventDefault();
-        btn.classList.remove('active');
-        if (intervalId) { clearInterval(intervalId); intervalId = null; }
-    };
-    btn.addEventListener('touchstart', startAction, { passive: false });
-    btn.addEventListener('touchend', stopAction, { passive: false });
-    btn.addEventListener('mousedown', startAction);
-    btn.addEventListener('mouseup', stopAction);
-    btn.addEventListener('mouseleave', stopAction);
-}
-
-setupTouchButton('btn-left', () => { if(currentTurn==='PLAYER') playerTank.x = Math.max(10, playerTank.x - playerTank.speed); });
-setupTouchButton('btn-right', () => { if(currentTurn==='PLAYER') playerTank.x = Math.min(canvas.width / 2 - 60, playerTank.x + playerTank.speed); });
-setupTouchButton('btn-angle-up', () => { if(currentTurn==='PLAYER') playerTank.angle = Math.min(85, playerTank.angle + 1); });
-setupTouchButton('btn-angle-down', () => { if(currentTurn==='PLAYER') playerTank.angle = Math.max(5, playerTank.angle - 1); });
-
-document.getElementById('btn-fire').addEventListener('click', fireCannon);
-document.getElementById('btn-fire').addEventListener('touchstart', (e) => { e.preventDefault(); fireCannon(); });
-</script>
-</body>
-</html><!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Rüzgarlı Topçu Savaşları</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-        body { background: #1a1a1a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; color: #fff; }
-        #game-container { position: relative; width: 100vw; height: 100vh; background: #87CEEB; }
-        canvas { display: block; width: 100%; height: 100%; }
-
         .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.88); display: flex; flex-direction: column;
@@ -598,7 +95,7 @@ document.getElementById('btn-fire').addEventListener('touchstart', (e) => { e.pr
         </div>
     </div>
 
-    <div id="turn-indicator">Sıra Sizde! (Atış Hakkı: <span id="shot-count">7</span>/7)</div>
+    <div id="turn-indicator">Sıra Sizde! (Güç Yenilenme: <span id="shot-count">7</span> atış)</div>
 
     <!-- MAĞAZA EKRANI -->
     <div id="shop-screen" class="overlay">
@@ -615,13 +112,13 @@ document.getElementById('btn-fire').addEventListener('touchstart', (e) => { e.pr
                 <button class="btn-buy" onclick="buyItem('health', 15)">15 Altın</button>
             </div>
             <div class="shop-card special">
-                <h3>🚀 Hava Saldırısı Gücü</h3>
+                <h3>🚀 AirStrike Gücü</h3>
                 <p>Füze Hasarını Artır</p>
                 <button class="btn-buy" onclick="buyItem('up_airstrike', 30)">30 Altın</button>
             </div>
             <div class="shop-card special">
-                <h3>💥 Üçlü Atış Açı Sınırı</h3>
-                <p>Mermi Yayılımını Daralt</p>
+                <h3>💥 Üçlü Atış Yayılımı</h3>
+                <p>Açıyı Daralt</p>
                 <button class="btn-buy" onclick="buyItem('up_triple', 25)">25 Altın</button>
             </div>
         </div>
@@ -706,7 +203,7 @@ let currentLevel = 1;
 let wind = Math.floor(Math.random() * 11) - 5;
 let keys = {};
 
-// Özel Güç Kontrolleri (7 Atışta Yenilenir)
+// Özel Güç Kontrolleri (7 Atışta Bir Otomatik Yenilenir)
 let shotsFired = 0;
 let powersUsed = { airstrike: false, triple: false, shield: false };
 let activeShield = false;
@@ -770,11 +267,12 @@ function updateHUD() {
     document.getElementById('player-hp-bar').style.width = Math.max(0, (playerTank.hp / playerTank.maxHp) * 100) + '%';
     document.getElementById('enemy-hp-bar').style.width = Math.max(0, (enemyTank.hp / enemyTank.maxHp) * 100) + '%';
     
-    document.getElementById('shot-count').innerText = 7 - (shotsFired % 7);
+    let remainingShots = 7 - (shotsFired % 7);
+    document.getElementById('shot-count').innerText = remainingShots === 0 ? 7 : remainingShots;
     
-    document.getElementById('st-air').innerText = powersUsed.airstrike ? 'BEKLİYOR' : 'HAZIR';
-    document.getElementById('st-trp').innerText = powersUsed.triple ? 'BEKLİYOR' : 'HAZIR';
-    document.getElementById('st-shd').innerText = powersUsed.shield ? 'BEKLİYOR' : 'HAZIR';
+    document.getElementById('st-air').innerText = powersUsed.airstrike ? 'KULLANILDI' : 'HAZIR';
+    document.getElementById('st-trp').innerText = powersUsed.triple ? 'KULLANILDI' : 'HAZIR';
+    document.getElementById('st-shd').innerText = powersUsed.shield ? 'KULLANILDI' : 'HAZIR';
 }
 
 function buyItem(type, cost) {
@@ -813,7 +311,6 @@ function checkPowerReset() {
         powersUsed.airstrike = false;
         powersUsed.triple = false;
         powersUsed.shield = false;
-        alert("Özel Güçleriniz Yenilendi!");
     }
     updateHUD();
 }
