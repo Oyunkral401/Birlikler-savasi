@@ -29,6 +29,7 @@
             background: #2c3e50; padding: 12px; border-radius: 8px; border: 2px solid #34495e;
             text-align: center; width: 135px; display: flex; flex-direction: column; justify-content: space-between;
         }
+        .shop-card.special { border-color: #f1c40f; background: #34495e; }
         .shop-card h3 { font-size: 0.95rem; color: #ecf0f1; margin-bottom: 5px; }
         .shop-card p { font-size: 0.8rem; color: #bdc3c7; margin-bottom: 8px; }
         
@@ -70,6 +71,15 @@
             background: rgba(0,0,0,0.7); padding: 6px 16px; border-radius: 20px;
             font-weight: bold; color: #f1c40f; font-size: 0.9rem; z-index: 5; text-align: center;
         }
+
+        #special-powers {
+            position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 10px; pointer-events: auto; z-index: 5;
+        }
+        .p-btn {
+            background: rgba(44, 62, 80, 0.9); border: 2px solid #f1c40f; color: #fff;
+            padding: 6px 12px; border-radius: 15px; font-size: 0.8rem; font-weight: bold; cursor: pointer;
+        }
         
         .controls-info {
             position: absolute; bottom: 15px; left: 15px; right: 15px;
@@ -92,7 +102,7 @@
     <div id="hud">
         <div>
             1. Oyuncu HP: <div class="hp-bar-outer"><div id="player-hp-bar" class="hp-bar-inner"></div></div>
-            | Altın: <span id="gold-val" style="color:#f1c40f;">50</span>
+            | Altın: <span id="gold-val" style="color:#f1c40f;">0</span>
         </div>
         <div>Bölüm: <span id="level-val" style="color:#e67e22;">1</span> | Rüzgar: <span id="wind-val">0</span></div>
         <div>
@@ -100,7 +110,7 @@
         </div>
     </div>
 
-    <div id="turn-indicator">Sıra Sizde!</div>
+    <div id="turn-indicator">Sıra Sizde! (Güç Yenilenme: <span id="shot-count">7</span> atış)</div>
 
     <!-- MAĞAZA & MOD SEÇİMİ -->
     <div id="shop-screen" class="overlay">
@@ -115,12 +125,22 @@
             <div class="shop-card">
                 <h3>Güçlü Mermi</h3>
                 <p>+5 Hasar</p>
-                <button class="btn-buy" onclick="buyItem('damage', 20)">20 Altın</button>
+                <button class="btn-buy" onclick="buyItem('damage', 10)">10 Altın</button>
             </div>
             <div class="shop-card">
                 <h3>Zırh Takviyesi</h3>
                 <p>+5 Can</p>
-                <button class="btn-buy" onclick="buyItem('health', 15)">15 Altın</button>
+                <button class="btn-buy" onclick="buyItem('health', 10)">10 Altın</button>
+            </div>
+            <div class="shop-card special">
+                <h3>🚀 AirStrike Gücü</h3>
+                <p>Füze Hasarını Artır</p>
+                <button class="btn-buy" onclick="buyItem('up_airstrike', 20)">20 Altın</button>
+            </div>
+            <div class="shop-card special">
+                <h3>💥 Üçlü Atış Yayılımı</h3>
+                <p>Açıyı Daralt</p>
+                <button class="btn-buy" onclick="buyItem('up_triple', 15)">15 Altın</button>
             </div>
         </div>
 
@@ -191,6 +211,13 @@
 
     <canvas id="gameCanvas"></canvas>
 
+    <!-- OYUN İÇİ ÖZEL GÜÇ PANELİ -->
+    <div id="special-powers">
+        <button class="p-btn" id="btn-air" onclick="useAirstrike()">🚀 Hava Saldırısı (<span id="st-air">HAZIR</span>)</button>
+        <button class="p-btn" id="btn-trp" onclick="useTripleShot()">💥 Üçlü Atış (<span id="st-trp">HAZIR</span>)</button>
+        <button class="p-btn" id="btn-shd" onclick="useShield()">🛡️ Kalkan (<span id="st-shd">HAZIR</span>)</button>
+    </div>
+
     <div class="controls-info" id="controls-footer">
         <div><strong>1. Oyuncu:</strong> W/S (Açı) | A/D (Hareket) | SPACE (Ateş)</div>
         <div id="p2-controls-hint"><strong>2. Oyuncu:</strong> L/Ö (Açı) | M/Ç (Hareket) | ENTER (Ateş)</div>
@@ -211,10 +238,19 @@ window.addEventListener('resize', resizeCanvas);
 let gameState = 'SHOP';
 let gameMode = '1P'; 
 let turnState = 'PLAYER1'; 
-let playerGold = 50;
+let playerGold = 0; // 0 ALTINLA BAŞLAMA
 let currentLevel = 1;
 let wind = Math.floor(Math.random() * 11) - 5;
 let keys = {};
+
+let shotsFired = 0;
+let powersUsed1 = { airstrike: false, triple: false, shield: false };
+let powersUsed2 = { airstrike: false, triple: false, shield: false };
+let activeShield1 = false;
+let activeShield2 = false;
+
+let airDamageExtra = 0;
+let tripleAngleSpread = 7;
 
 let aiLastX = null;
 let aiBasePower = 55;
@@ -228,7 +264,7 @@ const playerTank1 = {
 let playerTank2 = {
     x: 0, y: 0, width: 46, height: 22,
     color: '#e74c3c', hp: 100, maxHp: 100,
-    angle: 135, power: 55, damage: 20, speed: 3, isBoss: false
+    angle: 45, power: 55, damage: 20, speed: 3, isBoss: false
 };
 
 let projectiles = [];
@@ -296,6 +332,14 @@ function updateHUD() {
     document.getElementById('wind-val').innerText = wind > 0 ? `→ ${wind}` : `← ${Math.abs(wind)}`;
     document.getElementById('player-hp-bar').style.width = Math.max(0, (playerTank1.hp / playerTank1.maxHp) * 100) + '%';
     document.getElementById('enemy-hp-bar').style.width = Math.max(0, (playerTank2.hp / playerTank2.maxHp) * 100) + '%';
+    
+    let remainingShots = 7 - (shotsFired % 7);
+    document.getElementById('shot-count').innerText = remainingShots === 0 ? 7 : remainingShots;
+    
+    let currentPowers = turnState === 'PLAYER1' ? powersUsed1 : powersUsed2;
+    document.getElementById('st-air').innerText = currentPowers.airstrike ? 'KULLANILDI' : 'HAZIR';
+    document.getElementById('st-trp').innerText = currentPowers.triple ? 'KULLANILDI' : 'HAZIR';
+    document.getElementById('st-shd').innerText = currentPowers.shield ? 'KULLANILDI' : 'HAZIR';
 }
 
 function buyItem(type, cost) {
@@ -303,8 +347,72 @@ function buyItem(type, cost) {
         playerGold -= cost;
         if (type === 'damage') playerTank1.damage += 5;
         if (type === 'health') { playerTank1.maxHp += 5; playerTank1.hp += 5; }
+        if (type === 'up_airstrike') airDamageExtra += 15;
+        if (type === 'up_triple') tripleAngleSpread = Math.max(3, tripleAngleSpread - 1);
         updateHUD();
     }
+}
+
+function checkPowerReset() {
+    shotsFired++;
+    if (shotsFired % 7 === 0) {
+        powersUsed1 = { airstrike: false, triple: false, shield: false };
+        powersUsed2 = { airstrike: false, triple: false, shield: false };
+    }
+    updateHUD();
+}
+
+function useAirstrike() {
+    if (gameState !== 'PLAYING' || turnState === 'WAITING' || projectiles.length > 0) return;
+    let currentPowers = turnState === 'PLAYER1' ? powersUsed1 : powersUsed2;
+    if (currentPowers.airstrike) return;
+
+    currentPowers.airstrike = true;
+    checkPowerReset();
+    let targetTank = turnState === 'PLAYER1' ? playerTank2 : playerTank1;
+    let shooter = turnState;
+    turnState = 'WAITING';
+    
+    projectiles.push({
+        x: targetTank.x + targetTank.width / 2,
+        y: -20, vx: 0, vy: 12, owner: shooter, isAir: true
+    });
+}
+
+function useTripleShot() {
+    if (gameState !== 'PLAYING' || turnState === 'WAITING' || projectiles.length > 0) return;
+    let currentPowers = turnState === 'PLAYER1' ? powersUsed1 : powersUsed2;
+    if (currentPowers.triple) return;
+
+    currentPowers.triple = true;
+    checkPowerReset();
+    let tank = turnState === 'PLAYER1' ? playerTank1 : playerTank2;
+    let shooter = turnState;
+    turnState = 'WAITING';
+
+    const angles = [tank.angle - tripleAngleSpread, tank.angle, tank.angle + tripleAngleSpread];
+    angles.forEach(ang => {
+        const rad = (ang * Math.PI) / 180;
+        const speed = tank.power * 0.28;
+        const dir = shooter === 'PLAYER1' ? 1 : -1;
+        projectiles.push({
+            x: tank.x + tank.width / 2,
+            y: tank.y, vx: Math.cos(rad) * speed * dir, vy: -Math.sin(rad) * speed, owner: shooter
+        });
+    });
+}
+
+function useShield() {
+    if (gameState !== 'PLAYING' || turnState === 'WAITING') return;
+    let currentPowers = turnState === 'PLAYER1' ? powersUsed1 : powersUsed2;
+    if (currentPowers.shield) return;
+
+    currentPowers.shield = true;
+    if (turnState === 'PLAYER1') activeShield1 = true;
+    else activeShield2 = true;
+
+    checkPowerReset();
+    document.getElementById('turn-indicator').innerText = (turnState === 'PLAYER1' ? "1. Oyuncu" : "2. Oyuncu") + " Kalkan Aktif!";
 }
 
 function startGame() {
@@ -345,13 +453,14 @@ function handleInput() {
     } else if (gameMode === '2P' && turnState === 'PLAYER2') {
         if (keys['m']) playerTank2.x = Math.max(canvas.width / 2 + 10, playerTank2.x - playerTank2.speed);
         if (keys['ç']) playerTank2.x = Math.min(canvas.width - 60, playerTank2.x + playerTank2.speed);
-        if (keys['l']) playerTank2.angle = Math.min(175, playerTank2.angle + 1);
-        if (keys['ö']) playerTank2.angle = Math.max(95, playerTank2.angle - 1);
+        if (keys['l']) playerTank2.angle = Math.min(85, playerTank2.angle + 1);
+        if (keys['ö']) playerTank2.angle = Math.max(5, playerTank2.angle - 1);
     }
 }
 
 function fireCannon(playerNum) {
     turnState = 'WAITING';
+    checkPowerReset();
     if (playerNum === 1) {
         const rad = (playerTank1.angle * Math.PI) / 180;
         const speed = playerTank1.power * 0.28;
@@ -362,9 +471,10 @@ function fireCannon(playerNum) {
     } else {
         const rad = (playerTank2.angle * Math.PI) / 180;
         const speed = playerTank2.power * 0.28;
+        // TERS VURMA DÜZELTİLDİ: Sola doğru ateş
         projectiles.push({
             x: playerTank2.x + playerTank2.width / 2,
-            y: playerTank2.y, vx: Math.cos(rad) * speed * -1, vy: -Math.sin(rad) * speed, owner: 'PLAYER2'
+            y: playerTank2.y, vx: -Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, owner: 'PLAYER2'
         });
     }
 }
@@ -377,22 +487,24 @@ function triggerBotTurn() {
         if (gameState !== 'PLAYING') return;
         const distance = playerTank2.x - playerTank1.x;
         if (aiLastX !== null) {
-            if (aiLastX > playerTank1.x) aiBasePower += 1.5;
-            else aiBasePower -= 1.5;
+            if (aiLastX > playerTank1.x) aiBasePower -= 1.5;
+            else aiBasePower += 1.5;
         } else {
-            aiBasePower = (distance / 11) - (wind * 1.8);
+            aiBasePower = (distance / 11) + (wind * 1.8);
         }
         
-        let aiAngle = 135 + (Math.random() * 4 - 2);
+        let aiAngle = 45 + (Math.random() * 4 - 2);
         let finalPower = Math.min(85, Math.max(35, aiBasePower + (Math.random() * 4 - 2)));
         
         const rad = (aiAngle * Math.PI) / 180;
         const speed = finalPower * 0.28;
 
         turnState = 'WAITING';
+        checkPowerReset();
+        // BOT TERS VURMA DÜZELTİLDİ: Sola doğru ateş
         projectiles.push({
             x: playerTank2.x + playerTank2.width / 2, y: playerTank2.y,
-            vx: Math.cos(rad) * speed * -1, vy: -Math.sin(rad) * speed, owner: 'PLAYER2'
+            vx: -Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, owner: 'PLAYER2'
         });
     }, 1000);
 }
@@ -438,21 +550,29 @@ function update() {
 
         let lastOwner = p.owner;
 
+        // 2. Oyuncuya / Bota Vuruş
         if (p.owner === 'PLAYER1' &&
             p.x >= playerTank2.x && p.x <= playerTank2.x + playerTank2.width &&
             p.y >= playerTank2.y && p.y <= playerTank2.y + playerTank2.height) {
             
-            playerTank2.hp -= playerTank1.damage;
+            if (activeShield2) {
+                activeShield2 = false;
+                alert("2. Oyuncunun Kalkanı Saldırıyı Engelledi!");
+            } else {
+                let dmg = playerTank1.damage + (p.isAir ? airDamageExtra : 0);
+                playerTank2.hp -= dmg;
+            }
+            
             addExplosion(p.x, p.y);
             projectiles.splice(i, 1);
             updateHUD();
             
             if (playerTank2.hp <= 0) {
-                playerGold += 15;
+                playerGold += 10; // +10 ALTIN KAZANIMI
                 if (gameMode === '1P' && playerTank2.isBoss) {
                     document.getElementById('boss-reward-screen').style.display = 'flex';
                 } else {
-                    alert("Zafer! Rakip yok edildi. +15 Altın!");
+                    alert("Zafer! Rakip yok edildi. +10 Altın!");
                     document.getElementById('shop-screen').style.display = 'flex';
                 }
                 if (gameMode === '1P') currentLevel++; 
@@ -463,11 +583,18 @@ function update() {
             continue;
         }
 
+        // 1. Oyuncuya Vuruş
         if (p.owner === 'PLAYER2' &&
             p.x >= playerTank1.x && p.x <= playerTank1.x + playerTank1.width &&
             p.y >= playerTank1.y && p.y <= playerTank1.y + playerTank1.height) {
             
-            playerTank1.hp -= playerTank2.damage;
+            if (activeShield1) {
+                activeShield1 = false;
+                alert("1. Oyuncunun Kalkanı Saldırıyı Engelledi!");
+            } else {
+                playerTank1.hp -= playerTank2.damage;
+            }
+            
             addExplosion(p.x, p.y);
             projectiles.splice(i, 1);
             updateHUD();
@@ -484,6 +611,7 @@ function update() {
             continue;
         }
 
+        // Zemine Çarpma / Ekrandan Çıkma
         if (p.y >= canvas.height - 50 || p.x < -50 || p.x > canvas.width + 50) {
             addExplosion(p.x, Math.min(p.y, canvas.height - 50));
             if (p.owner === 'PLAYER2') aiLastX = p.x;
@@ -508,6 +636,7 @@ function draw() {
     ctx.fillStyle = '#2d572c';
     ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
 
+    // 1. Oyuncu Tankı
     ctx.save();
     ctx.fillStyle = playerTank1.color;
     ctx.fillRect(playerTank1.x, playerTank1.y, playerTank1.width, playerTank1.height);
@@ -517,21 +646,38 @@ function draw() {
     ctx.fillRect(0, -4, 28, 8);
     ctx.restore();
 
+    if (activeShield1) {
+        ctx.strokeStyle = '#f1c40f';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(playerTank1.x + playerTank1.width / 2, playerTank1.y + playerTank1.height / 2, 35, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    // 2. Oyuncu / Boss Tankı
     if (playerTank2.hp > 0) {
         ctx.save();
         ctx.fillStyle = playerTank2.color;
         ctx.fillRect(playerTank2.x, playerTank2.y, playerTank2.width, playerTank2.height);
         ctx.translate(playerTank2.x + playerTank2.width / 2, playerTank2.y + 5);
-        ctx.rotate((-playerTank2.angle * Math.PI) / 180);
+        ctx.rotate((playerTank2.angle * Math.PI) / 180); // Sola bakış açısı düzeltildi
         ctx.fillStyle = playerTank2.isBoss ? '#4a235a' : '#922b21';
-        ctx.fillRect(0, -4, playerTank2.isBoss ? 42 : 28, 8);
+        ctx.fillRect(-28, -4, 28, 8);
         ctx.restore();
+
+        if (activeShield2) {
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(playerTank2.x + playerTank2.width / 2, playerTank2.y + playerTank2.height / 2, 35, 0, Math.PI * 2);
+            ctx.stroke();
+        }
     }
 
     ctx.fillStyle = '#111';
     projectiles.forEach(p => {
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, p.isAir ? 7 : 5, 0, Math.PI * 2);
         ctx.fill();
     });
 
