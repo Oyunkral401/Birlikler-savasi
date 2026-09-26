@@ -29,7 +29,6 @@
             background: #2c3e50; padding: 12px; border-radius: 8px; border: 2px solid #34495e;
             text-align: center; width: 135px; display: flex; flex-direction: column; justify-content: space-between;
         }
-        .shop-card.special { border-color: #f1c40f; background: #34495e; }
         .shop-card h3 { font-size: 0.95rem; color: #ecf0f1; margin-bottom: 5px; }
         .shop-card p { font-size: 0.8rem; color: #bdc3c7; margin-bottom: 8px; }
         
@@ -210,8 +209,8 @@ resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
 let gameState = 'SHOP';
-let gameMode = '1P'; // '1P' veya '2P'
-let turnState = 'PLAYER1'; // PLAYER1, PLAYER2, WAITING
+let gameMode = '1P'; 
+let turnState = 'PLAYER1'; 
 let playerGold = 50;
 let currentLevel = 1;
 let wind = Math.floor(Math.random() * 11) - 5;
@@ -322,12 +321,10 @@ window.addEventListener('keydown', (e) => {
     let key = e.key.toLowerCase();
     keys[key] = true;
     
-    // 1. Oyuncu Ateş (Space)
     if (e.code === 'Space' && gameState === 'PLAYING' && turnState === 'PLAYER1' && projectiles.length === 0) {
         fireCannon(1);
     }
     
-    // 2. Oyuncu Ateş (2P Modunda Enter)
     if ((e.code === 'Enter' || key === 'k') && gameState === 'PLAYING' && gameMode === '2P' && turnState === 'PLAYER2' && projectiles.length === 0) {
         fireCannon(2);
     }
@@ -441,7 +438,6 @@ function update() {
 
         let lastOwner = p.owner;
 
-        // 2. Oyuncuya / Bota Vuruş
         if (p.owner === 'PLAYER1' &&
             p.x >= playerTank2.x && p.x <= playerTank2.x + playerTank2.width &&
             p.y >= playerTank2.y && p.y <= playerTank2.y + playerTank2.height) {
@@ -459,7 +455,7 @@ function update() {
                     alert("Zafer! Rakip yok edildi. +15 Altın!");
                     document.getElementById('shop-screen').style.display = 'flex';
                 }
-                if (gameMode === '1P') currentLevel++; // SEVİYE YÜKSELİŞİ
+                if (gameMode === '1P') currentLevel++; 
                 gameState = 'SHOP';
             } else {
                 switchTurn('PLAYER1');
@@ -467,7 +463,6 @@ function update() {
             continue;
         }
 
-        // 1. Oyuncuya Vuruş
         if (p.owner === 'PLAYER2' &&
             p.x >= playerTank1.x && p.x <= playerTank1.x + playerTank1.width &&
             p.y >= playerTank1.y && p.y <= playerTank1.y + playerTank1.height) {
@@ -480,7 +475,7 @@ function update() {
             if (playerTank1.hp <= 0) {
                 alert(gameMode === '1P' ? ("Yenildiniz! " + currentLevel + ". Bölümde Kaldınız.") : "2. Oyuncu Zafer Kazandı!");
                 playerTank1.hp = playerTank1.maxHp;
-                if (gameMode === '1P') currentLevel = 1; // YENİLİNCE 1. SEVİYEYE DÖNÜŞ
+                if (gameMode === '1P') currentLevel = 1; 
                 gameState = 'SHOP';
                 document.getElementById('shop-screen').style.display = 'flex';
             } else {
@@ -489,7 +484,6 @@ function update() {
             continue;
         }
 
-        // Zemine Çarpma / Ekrandan Çıkma
         if (p.y >= canvas.height - 50 || p.x < -50 || p.x > canvas.width + 50) {
             addExplosion(p.x, Math.min(p.y, canvas.height - 50));
             if (p.owner === 'PLAYER2') aiLastX = p.x;
@@ -514,7 +508,6 @@ function draw() {
     ctx.fillStyle = '#2d572c';
     ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
 
-    // 1. Oyuncu Tankı
     ctx.save();
     ctx.fillStyle = playerTank1.color;
     ctx.fillRect(playerTank1.x, playerTank1.y, playerTank1.width, playerTank1.height);
@@ -524,7 +517,6 @@ function draw() {
     ctx.fillRect(0, -4, 28, 8);
     ctx.restore();
 
-    // 2. Oyuncu / Boss Tankı
     if (playerTank2.hp > 0) {
         ctx.save();
         ctx.fillStyle = playerTank2.color;
