@@ -73,7 +73,7 @@
         }
 
         #special-powers {
-            position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%);
+            position: absolute; bottom: 65px; left: 50%; transform: translateX(-50%);
             display: flex; gap: 10px; pointer-events: auto; z-index: 5;
         }
         .p-btn {
@@ -231,14 +231,17 @@ const ctx = canvas.getContext('2d');
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    if (gameState === 'PLAYING') {
+        playerTank1.y = canvas.height - 120;
+        playerTank2.y = canvas.height - (playerTank2.isBoss ? 136 : 120);
+    }
 }
-resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
 let gameState = 'SHOP';
 let gameMode = '1P'; 
 let turnState = 'PLAYER1'; 
-let playerGold = 0; // 0 ALTINLA BAŞLAMA
+let playerGold = 0;
 let currentLevel = 1;
 let wind = Math.floor(Math.random() * 11) - 5;
 let keys = {};
@@ -286,7 +289,8 @@ function toggleLeaderboard(show) {
 }
 
 function initGame() {
-    playerTank1.y = canvas.height - 72;
+    resizeCanvas();
+    playerTank1.y = canvas.height - 120;
     
     if (gameMode === '1P') {
         if (currentLevel % 10 === 0) {
@@ -320,7 +324,7 @@ function initGame() {
     }
 
     playerTank2.x = canvas.width - 130;
-    playerTank2.y = canvas.height - (playerTank2.isBoss ? 88 : 72);
+    playerTank2.y = canvas.height - (playerTank2.isBoss ? 136 : 120);
     projectiles = [];
     explosions = [];
     updateHUD();
@@ -471,7 +475,6 @@ function fireCannon(playerNum) {
     } else {
         const rad = (playerTank2.angle * Math.PI) / 180;
         const speed = playerTank2.power * 0.28;
-        // TERS VURMA DÜZELTİLDİ: Sola doğru ateş
         projectiles.push({
             x: playerTank2.x + playerTank2.width / 2,
             y: playerTank2.y, vx: -Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, owner: 'PLAYER2'
@@ -501,7 +504,6 @@ function triggerBotTurn() {
 
         turnState = 'WAITING';
         checkPowerReset();
-        // BOT TERS VURMA DÜZELTİLDİ: Sola doğru ateş
         projectiles.push({
             x: playerTank2.x + playerTank2.width / 2, y: playerTank2.y,
             vx: -Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, owner: 'PLAYER2'
@@ -568,7 +570,7 @@ function update() {
             updateHUD();
             
             if (playerTank2.hp <= 0) {
-                playerGold += 10; // +10 ALTIN KAZANIMI
+                playerGold += 10;
                 if (gameMode === '1P' && playerTank2.isBoss) {
                     document.getElementById('boss-reward-screen').style.display = 'flex';
                 } else {
@@ -612,8 +614,8 @@ function update() {
         }
 
         // Zemine Çarpma / Ekrandan Çıkma
-        if (p.y >= canvas.height - 50 || p.x < -50 || p.x > canvas.width + 50) {
-            addExplosion(p.x, Math.min(p.y, canvas.height - 50));
+        if (p.y >= canvas.height - 100 || p.x < -50 || p.x > canvas.width + 50) {
+            addExplosion(p.x, Math.min(p.y, canvas.height - 100));
             if (p.owner === 'PLAYER2') aiLastX = p.x;
             projectiles.splice(i, 1);
             switchTurn(lastOwner);
@@ -631,12 +633,13 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Gökyüzü ve Zemin Çizimi
     ctx.fillStyle = '#87CEEB';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#2d572c';
-    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+    ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
 
-    // 1. Oyuncu Tankı
+    // 1. Oyuncu Tankı (Yeşil)
     ctx.save();
     ctx.fillStyle = playerTank1.color;
     ctx.fillRect(playerTank1.x, playerTank1.y, playerTank1.width, playerTank1.height);
@@ -654,13 +657,13 @@ function draw() {
         ctx.stroke();
     }
 
-    // 2. Oyuncu / Boss Tankı
+    // 2. Oyuncu / Boss Tankı (Kırmızı / Mor)
     if (playerTank2.hp > 0) {
         ctx.save();
         ctx.fillStyle = playerTank2.color;
         ctx.fillRect(playerTank2.x, playerTank2.y, playerTank2.width, playerTank2.height);
         ctx.translate(playerTank2.x + playerTank2.width / 2, playerTank2.y + 5);
-        ctx.rotate((playerTank2.angle * Math.PI) / 180); // Sola bakış açısı düzeltildi
+        ctx.rotate((playerTank2.angle * Math.PI) / 180);
         ctx.fillStyle = playerTank2.isBoss ? '#4a235a' : '#922b21';
         ctx.fillRect(-28, -4, 28, 8);
         ctx.restore();
@@ -674,6 +677,7 @@ function draw() {
         }
     }
 
+    // Mermiler
     ctx.fillStyle = '#111';
     projectiles.forEach(p => {
         ctx.beginPath();
@@ -681,6 +685,7 @@ function draw() {
         ctx.fill();
     });
 
+    // Patlamalar
     explosions.forEach(ex => {
         ctx.fillStyle = 'rgba(231, 76, 60, 0.7)';
         ctx.beginPath();
