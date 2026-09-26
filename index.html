@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Rüzgarlı Topçu Savaşları - 2 Oyunculu Eşzamanlı</title>
+    <title>Rüzgarlı Topçu Savaşları</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         body { background: #1a1a1a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; color: #fff; }
@@ -17,11 +17,19 @@
         }
         h1 { font-size: 2.2rem; color: #f1c40f; margin-bottom: 15px; text-shadow: 2px 2px #000; text-align: center; }
         
-        .shop-items { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; max-width: 850px; }
+        .mode-select { display: flex; gap: 15px; margin-bottom: 20px; }
+        .mode-btn {
+            background: #34495e; border: 2px solid #f1c40f; color: #fff;
+            padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer;
+        }
+        .mode-btn.active { background: #f1c40f; color: #000; }
+
+        .shop-items { display: flex; gap: 12px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; max-width: 850px; }
         .shop-card {
             background: #2c3e50; padding: 12px; border-radius: 8px; border: 2px solid #34495e;
             text-align: center; width: 135px; display: flex; flex-direction: column; justify-content: space-between;
         }
+        .shop-card.special { border-color: #f1c40f; background: #34495e; }
         .shop-card h3 { font-size: 0.95rem; color: #ecf0f1; margin-bottom: 5px; }
         .shop-card p { font-size: 0.8rem; color: #bdc3c7; margin-bottom: 8px; }
         
@@ -70,7 +78,6 @@
             background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; pointer-events: none;
         }
 
-        /* YARDIM PENCERESİ */
         .help-box {
             background: #2c3e50; border: 2px solid #f1c40f; border-radius: 12px;
             padding: 20px; max-width: 500px; text-align: left; line-height: 1.5; font-size: 0.95rem;
@@ -88,18 +95,23 @@
             1. Oyuncu HP: <div class="hp-bar-outer"><div id="player-hp-bar" class="hp-bar-inner"></div></div>
             | Altın: <span id="gold-val" style="color:#f1c40f;">50</span>
         </div>
-        <div>Rüzgar: <span id="wind-val">0</span></div>
+        <div>Bölüm: <span id="level-val" style="color:#e67e22;">1</span> | Rüzgar: <span id="wind-val">0</span></div>
         <div>
-            <span id="enemy-title">2. Oyuncu</span> HP: <div class="hp-bar-outer"><div id="enemy-hp-bar" class="hp-bar-inner"></div></div>
+            <span id="enemy-title">Rakip Bot</span> HP: <div class="hp-bar-outer"><div id="enemy-hp-bar" class="hp-bar-inner"></div></div>
         </div>
     </div>
 
-    <div id="turn-indicator">Aynı Tur: İki Oyuncu da Ateş Etsin!</div>
+    <div id="turn-indicator">Sıra Sizde!</div>
 
-    <!-- MAĞAZA EKRANI -->
+    <!-- MAĞAZA & MOD SEÇİMİ -->
     <div id="shop-screen" class="overlay">
-        <h1>TOPÇU MAĞAZASI</h1>
+        <h1>TOPÇU MAĞAZASI & MOD SEÇİMİ</h1>
         
+        <div class="mode-select">
+            <button class="mode-btn active" id="btn-mode-1p" onclick="selectMode('1P')">🎮 1 OYUNCU (BOT & SEVİYE)</button>
+            <button class="mode-btn" id="btn-mode-2p" onclick="selectMode('2P')">👥 2 OYUNCU (YEREL)</button>
+        </div>
+
         <div class="shop-items">
             <div class="shop-card">
                 <h3>Güçlü Mermi</h3>
@@ -120,13 +132,31 @@
         <button style="background:transparent; border:none; color:#aaa; margin-top:15px; cursor:pointer;" onclick="toggleLeaderboard(true)">🏆 Liderlik Tablosu</button>
     </div>
 
+    <!-- BOSS ÖDÜL PENCERESİ -->
+    <div id="boss-reward-screen" class="overlay" style="display:none;">
+        <h1 style="color:#e74c3c;">BOSS'U YENDİNİZ! 🎉</h1>
+        <p style="margin-bottom:20px;">Geçici Ücretsiz Geliştirmenizi Seçin:</p>
+        <div class="shop-items">
+            <div class="shop-card" style="border-color:#2ecc71;">
+                <h3>Süper Zırh</h3>
+                <p>+30 Can (Geçici)</p>
+                <button class="btn-buy" onclick="claimBossReward('hp')">ÜCRETSİZ AL</button>
+            </div>
+            <div class="shop-card" style="border-color:#2ecc71;">
+                <h3>Mega Hasar</h3>
+                <p>+20 Hasar (Geçici)</p>
+                <button class="btn-buy" onclick="claimBossReward('dmg')">ÜCRETSİZ AL</button>
+            </div>
+        </div>
+    </div>
+
     <!-- YARDIM EKRANI -->
     <div id="help-screen" class="overlay" style="display:none;">
         <div class="help-box">
             <h2>Oyun Kuralları & Kontroller</h2>
             <p><strong>🎯 Amaç:</strong> Rüzgarın yönünü ve şiddetini hesaba katarak rakip tankı vurup canını sıfırlamak!</p>
             <br>
-            <p><strong>🎮 Kontroller (Aynı Bilgisayardan):</strong></p>
+            <p><strong>🎮 Kontroller:</strong></p>
             <ul>
                 <li><strong>1. Oyuncu (Yeşil Tank):</strong>
                     <br>• Hareket: <kbd>A</kbd> (Sol) / <kbd>D</kbd> (Sağ)
@@ -134,15 +164,13 @@
                     <br>• Ateş Etme: <kbd>BOŞLUK (Space)</kbd>
                 </li>
                 <br>
-                <li><strong>2. Oyuncu (Kırmızı Tank):</strong>
+                <li><strong>2. Oyuncu (Kırmızı Tank - 2P Modunda):</strong>
                     <br>• Hareket: <kbd>M</kbd> (Sol) / <kbd>Ç</kbd> (Sağ)
                     <br>• Açı: <kbd>L</kbd> (Yukarı) / <kbd>Ö</kbd> (Aşağı)
                     <br>• Ateş Etme: <kbd>ENTER</kbd>
                 </li>
             </ul>
-            <p><strong>⚡ Tur Sistemi:</strong> Aynı tur içinde her iki oyuncu da birer atış yapar. İki oyuncu da ateş ettikten sonra mermiler havalanır ve tur tamamlanır.</p>
-            <br>
-            <div style="text-align: center;">
+            <div style="text-align: center; margin-top:15px;">
                 <button class="main-btn" onclick="toggleHelp(false)">ANLADIM, DÖN</button>
             </div>
         </div>
@@ -153,7 +181,7 @@
         <h1>🏆 LİDERLİK TABLOSU</h1>
         <table class="leaderboard-table">
             <thead>
-                <tr><th>Sıra</th><th>Oyuncu</th><th>Skor</th></tr>
+                <tr><th>Sıra</th><th>Oyuncu</th><th>En Yüksek Seviye</th></tr>
             </thead>
             <tbody id="leaderboard-body">
                 <tr><td colspan="3" style="color:#aaa;">Henüz kayıtlı skor bulunmuyor.</td></tr>
@@ -164,9 +192,9 @@
 
     <canvas id="gameCanvas"></canvas>
 
-    <div class="controls-info">
+    <div class="controls-info" id="controls-footer">
         <div><strong>1. Oyuncu:</strong> W/S (Açı) | A/D (Hareket) | SPACE (Ateş)</div>
-        <div><strong>2. Oyuncu:</strong> L/Ö (Açı) | M/Ç (Hareket) | ENTER (Ateş)</div>
+        <div id="p2-controls-hint"><strong>2. Oyuncu:</strong> L/Ö (Açı) | M/Ç (Hareket) | ENTER (Ateş)</div>
     </div>
 </div>
 
@@ -182,12 +210,15 @@ resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
 let gameState = 'SHOP';
+let gameMode = '1P'; // '1P' veya '2P'
+let turnState = 'PLAYER1'; // PLAYER1, PLAYER2, WAITING
 let playerGold = 50;
+let currentLevel = 1;
 let wind = Math.floor(Math.random() * 11) - 5;
 let keys = {};
 
-let fired1 = false;
-let fired2 = false;
+let aiLastX = null;
+let aiBasePower = 55;
 
 const playerTank1 = {
     x: 100, y: 0, width: 46, height: 22,
@@ -195,14 +226,21 @@ const playerTank1 = {
     angle: 45, power: 55, damage: 20, speed: 3
 };
 
-const playerTank2 = {
+let playerTank2 = {
     x: 0, y: 0, width: 46, height: 22,
     color: '#e74c3c', hp: 100, maxHp: 100,
-    angle: 135, power: 55, damage: 20, speed: 3
+    angle: 135, power: 55, damage: 20, speed: 3, isBoss: false
 };
 
 let projectiles = [];
 let explosions = [];
+
+function selectMode(mode) {
+    gameMode = mode;
+    document.getElementById('btn-mode-1p').classList.toggle('active', mode === '1P');
+    document.getElementById('btn-mode-2p').classList.toggle('active', mode === '2P');
+    document.getElementById('p2-controls-hint').style.display = mode === '2P' ? 'block' : 'none';
+}
 
 function toggleHelp(show) {
     document.getElementById('help-screen').style.display = show ? 'flex' : 'none';
@@ -214,28 +252,51 @@ function toggleLeaderboard(show) {
 
 function initGame() {
     playerTank1.y = canvas.height - 72;
+    
+    if (gameMode === '1P') {
+        if (currentLevel % 10 === 0) {
+            playerTank2.isBoss = true;
+            playerTank2.width = 75;
+            playerTank2.height = 38;
+            playerTank2.maxHp = 250;
+            playerTank2.hp = 250;
+            playerTank2.damage = 30;
+            playerTank2.color = '#8e44ad';
+            document.getElementById('enemy-title').innerText = "BOSS TANK";
+        } else {
+            playerTank2.isBoss = false;
+            playerTank2.width = 46;
+            playerTank2.height = 22;
+            playerTank2.maxHp = 100 + (currentLevel * 10);
+            playerTank2.hp = playerTank2.maxHp;
+            playerTank2.damage = 15 + Math.floor(currentLevel * 1.5);
+            playerTank2.color = '#e74c3c';
+            document.getElementById('enemy-title').innerText = "Rakip Bot";
+        }
+    } else {
+        playerTank2.isBoss = false;
+        playerTank2.width = 46;
+        playerTank2.height = 22;
+        playerTank2.maxHp = playerTank1.maxHp;
+        playerTank2.hp = playerTank2.maxHp;
+        playerTank2.damage = playerTank1.damage;
+        playerTank2.color = '#e74c3c';
+        document.getElementById('enemy-title').innerText = "2. Oyuncu";
+    }
+
     playerTank2.x = canvas.width - 130;
-    playerTank2.y = canvas.height - 72;
+    playerTank2.y = canvas.height - (playerTank2.isBoss ? 88 : 72);
     projectiles = [];
     explosions = [];
-    fired1 = false;
-    fired2 = false;
     updateHUD();
 }
 
 function updateHUD() {
     document.getElementById('gold-val').innerText = playerGold;
+    document.getElementById('level-val').innerText = currentLevel;
     document.getElementById('wind-val').innerText = wind > 0 ? `→ ${wind}` : `← ${Math.abs(wind)}`;
     document.getElementById('player-hp-bar').style.width = Math.max(0, (playerTank1.hp / playerTank1.maxHp) * 100) + '%';
     document.getElementById('enemy-hp-bar').style.width = Math.max(0, (playerTank2.hp / playerTank2.maxHp) * 100) + '%';
-    
-    let statusText = "";
-    if (!fired1 && !fired2) statusText = "Aynı Tur: İki Oyuncu da Ateş Bekliyor";
-    else if (fired1 && !fired2) statusText = "1. Oyuncu Ateş Etti! 2. Oyuncu Ateş Etmeli";
-    else if (!fired1 && fired2) statusText = "2. Oyuncu Ateş Etti! 1. Oyuncu Ateş Etmeli";
-    else statusText = "Mermiler Havada!";
-    
-    document.getElementById('turn-indicator').innerText = statusText;
 }
 
 function buyItem(type, cost) {
@@ -250,6 +311,8 @@ function buyItem(type, cost) {
 function startGame() {
     document.getElementById('shop-screen').style.display = 'none';
     gameState = 'PLAYING';
+    turnState = 'PLAYER1';
+    document.getElementById('turn-indicator').innerText = "1. Oyuncu Sırası!";
     wind = Math.floor(Math.random() * 11) - 5;
     initGame();
     gameLoop();
@@ -260,12 +323,12 @@ window.addEventListener('keydown', (e) => {
     keys[key] = true;
     
     // 1. Oyuncu Ateş (Space)
-    if (e.code === 'Space' && gameState === 'PLAYING' && !fired1) {
+    if (e.code === 'Space' && gameState === 'PLAYING' && turnState === 'PLAYER1' && projectiles.length === 0) {
         fireCannon(1);
     }
     
-    // 2. Oyuncu Ateş (Enter veya K)
-    if ((e.code === 'Enter' || key === 'k') && gameState === 'PLAYING' && !fired2) {
+    // 2. Oyuncu Ateş (2P Modunda Enter)
+    if ((e.code === 'Enter' || key === 'k') && gameState === 'PLAYING' && gameMode === '2P' && turnState === 'PLAYER2' && projectiles.length === 0) {
         fireCannon(2);
     }
 });
@@ -275,18 +338,14 @@ window.addEventListener('keyup', (e) => {
 });
 
 function handleInput() {
-    if (gameState !== 'PLAYING') return;
+    if (gameState !== 'PLAYING' || turnState === 'WAITING') return;
     
-    // 1. OYUNCU (A / D / W / S)
-    if (!fired1) {
+    if (turnState === 'PLAYER1') {
         if (keys['a']) playerTank1.x = Math.max(10, playerTank1.x - playerTank1.speed);
         if (keys['d']) playerTank1.x = Math.min(canvas.width / 2 - 60, playerTank1.x + playerTank1.speed);
         if (keys['w']) playerTank1.angle = Math.min(85, playerTank1.angle + 1);
         if (keys['s']) playerTank1.angle = Math.max(5, playerTank1.angle - 1);
-    }
-    
-    // 2. OYUNCU (M / Ç / L / Ö)
-    if (!fired2) {
+    } else if (gameMode === '2P' && turnState === 'PLAYER2') {
         if (keys['m']) playerTank2.x = Math.max(canvas.width / 2 + 10, playerTank2.x - playerTank2.speed);
         if (keys['ç']) playerTank2.x = Math.min(canvas.width - 60, playerTank2.x + playerTank2.speed);
         if (keys['l']) playerTank2.angle = Math.min(175, playerTank2.angle + 1);
@@ -295,16 +354,15 @@ function handleInput() {
 }
 
 function fireCannon(playerNum) {
-    if (playerNum === 1 && !fired1) {
-        fired1 = true;
+    turnState = 'WAITING';
+    if (playerNum === 1) {
         const rad = (playerTank1.angle * Math.PI) / 180;
         const speed = playerTank1.power * 0.28;
         projectiles.push({
             x: playerTank1.x + playerTank1.width / 2,
             y: playerTank1.y, vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, owner: 'PLAYER1'
         });
-    } else if (playerNum === 2 && !fired2) {
-        fired2 = true;
+    } else {
         const rad = (playerTank2.angle * Math.PI) / 180;
         const speed = playerTank2.power * 0.28;
         projectiles.push({
@@ -312,14 +370,59 @@ function fireCannon(playerNum) {
             y: playerTank2.y, vx: Math.cos(rad) * speed * -1, vy: -Math.sin(rad) * speed, owner: 'PLAYER2'
         });
     }
-    updateHUD();
 }
 
-function resetRound() {
-    fired1 = false;
-    fired2 = false;
+function triggerBotTurn() {
+    turnState = 'PLAYER2';
+    document.getElementById('turn-indicator').innerText = "Rakip Bot Nişan Alıyor...";
+    
+    setTimeout(() => {
+        if (gameState !== 'PLAYING') return;
+        const distance = playerTank2.x - playerTank1.x;
+        if (aiLastX !== null) {
+            if (aiLastX > playerTank1.x) aiBasePower += 1.5;
+            else aiBasePower -= 1.5;
+        } else {
+            aiBasePower = (distance / 11) - (wind * 1.8);
+        }
+        
+        let aiAngle = 135 + (Math.random() * 4 - 2);
+        let finalPower = Math.min(85, Math.max(35, aiBasePower + (Math.random() * 4 - 2)));
+        
+        const rad = (aiAngle * Math.PI) / 180;
+        const speed = finalPower * 0.28;
+
+        turnState = 'WAITING';
+        projectiles.push({
+            x: playerTank2.x + playerTank2.width / 2, y: playerTank2.y,
+            vx: Math.cos(rad) * speed * -1, vy: -Math.sin(rad) * speed, owner: 'PLAYER2'
+        });
+    }, 1000);
+}
+
+function claimBossReward(type) {
+    if (type === 'hp') playerTank1.hp += 30;
+    if (type === 'dmg') playerTank1.damage += 20;
+    
+    document.getElementById('boss-reward-screen').style.display = 'none';
+    document.getElementById('shop-screen').style.display = 'flex';
+}
+
+function switchTurn(lastOwner) {
     wind = Math.floor(Math.random() * 11) - 5;
     updateHUD();
+    
+    if (lastOwner === 'PLAYER1') {
+        if (gameMode === '1P') {
+            triggerBotTurn();
+        } else {
+            turnState = 'PLAYER2';
+            document.getElementById('turn-indicator').innerText = "2. Oyuncu Sırası!";
+        }
+    } else {
+        turnState = 'PLAYER1';
+        document.getElementById('turn-indicator').innerText = "1. Oyuncu Sırası!";
+    }
 }
 
 function update() {
@@ -336,7 +439,9 @@ function update() {
             explosions.push({x, y, radius: 4, maxRadius: 25});
         };
 
-        // 2. Oyuncuya Vuruş
+        let lastOwner = p.owner;
+
+        // 2. Oyuncuya / Bota Vuruş
         if (p.owner === 'PLAYER1' &&
             p.x >= playerTank2.x && p.x <= playerTank2.x + playerTank2.width &&
             p.y >= playerTank2.y && p.y <= playerTank2.y + playerTank2.height) {
@@ -347,10 +452,17 @@ function update() {
             updateHUD();
             
             if (playerTank2.hp <= 0) {
-                alert("1. Oyuncu Zafer Kazandı!");
                 playerGold += 15;
+                if (gameMode === '1P' && playerTank2.isBoss) {
+                    document.getElementById('boss-reward-screen').style.display = 'flex';
+                } else {
+                    alert("Zafer! Rakip yok edildi. +15 Altın!");
+                    document.getElementById('shop-screen').style.display = 'flex';
+                }
+                if (gameMode === '1P') currentLevel++; // SEVİYE YÜKSELİŞİ
                 gameState = 'SHOP';
-                document.getElementById('shop-screen').style.display = 'flex';
+            } else {
+                switchTurn('PLAYER1');
             }
             continue;
         }
@@ -366,9 +478,13 @@ function update() {
             updateHUD();
             
             if (playerTank1.hp <= 0) {
-                alert("2. Oyuncu Zafer Kazandı!");
+                alert(gameMode === '1P' ? ("Yenildiniz! " + currentLevel + ". Bölümde Kaldınız.") : "2. Oyuncu Zafer Kazandı!");
+                playerTank1.hp = playerTank1.maxHp;
+                if (gameMode === '1P') currentLevel = 1; // YENİLİNCE 1. SEVİYEYE DÖNÜŞ
                 gameState = 'SHOP';
                 document.getElementById('shop-screen').style.display = 'flex';
+            } else {
+                switchTurn('PLAYER2');
             }
             continue;
         }
@@ -376,14 +492,11 @@ function update() {
         // Zemine Çarpma / Ekrandan Çıkma
         if (p.y >= canvas.height - 50 || p.x < -50 || p.x > canvas.width + 50) {
             addExplosion(p.x, Math.min(p.y, canvas.height - 50));
+            if (p.owner === 'PLAYER2') aiLastX = p.x;
             projectiles.splice(i, 1);
+            switchTurn(lastOwner);
             continue;
         }
-    }
-
-    // İki mermi de atıldıysa ve havadaki tüm mermiler patladıysa yeni tura geç
-    if (fired1 && fired2 && projectiles.length === 0) {
-        resetRound();
     }
 
     for (let i = explosions.length - 1; i >= 0; i--) {
@@ -411,15 +524,17 @@ function draw() {
     ctx.fillRect(0, -4, 28, 8);
     ctx.restore();
 
-    // 2. Oyuncu Tankı
-    ctx.save();
-    ctx.fillStyle = playerTank2.color;
-    ctx.fillRect(playerTank2.x, playerTank2.y, playerTank2.width, playerTank2.height);
-    ctx.translate(playerTank2.x + playerTank2.width / 2, playerTank2.y + 5);
-    ctx.rotate((-playerTank2.angle * Math.PI) / 180);
-    ctx.fillStyle = '#922b21';
-    ctx.fillRect(0, -4, 28, 8);
-    ctx.restore();
+    // 2. Oyuncu / Boss Tankı
+    if (playerTank2.hp > 0) {
+        ctx.save();
+        ctx.fillStyle = playerTank2.color;
+        ctx.fillRect(playerTank2.x, playerTank2.y, playerTank2.width, playerTank2.height);
+        ctx.translate(playerTank2.x + playerTank2.width / 2, playerTank2.y + 5);
+        ctx.rotate((-playerTank2.angle * Math.PI) / 180);
+        ctx.fillStyle = playerTank2.isBoss ? '#4a235a' : '#922b21';
+        ctx.fillRect(0, -4, playerTank2.isBoss ? 42 : 28, 8);
+        ctx.restore();
+    }
 
     ctx.fillStyle = '#111';
     projectiles.forEach(p => {
